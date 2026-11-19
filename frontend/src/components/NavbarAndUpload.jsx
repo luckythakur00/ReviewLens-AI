@@ -1,34 +1,23 @@
 import { useState, useRef } from "react";
-import { FiBarChart2, FiUploadCloud, FiFile, FiLoader, FiCheckCircle, FiRefreshCw } from "react-icons/fi";
+import { FiBarChart2, FiUploadCloud, FiFile, FiLoader, FiRefreshCw, FiAlertCircle } from "react-icons/fi";
+import useReviewStore from "../store/useReviewStore";
 
-export default function NavbarAndUpload({ onAnalyze, onReset, isLoaded }) {
+export default function NavbarAndUpload() {
   const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
   const inputRef = useRef(null);
+
+  const { uploadReviewsCsv, resetDemo, isLoading, stats, error } = useReviewStore();
 
   function handleFile(e) {
     setFile(e.target.files[0]);
-    setDone(false);
   }
 
   function formatBytes(b) {
     return b < 1024 ? b + " B" : (b / 1024).toFixed(1) + " KB";
   }
 
-  async function handleAnalyze() {
-    if (!file) return;
-    setLoading(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
-    setDone(true);
-    onAnalyze();
-  }
-
-  function handleReset() {
-    setFile(null);
-    setDone(false);
-    onReset();
+  function handleAnalyze() {
+    if (file) uploadReviewsCsv(file);
   }
 
   return (
@@ -46,15 +35,13 @@ export default function NavbarAndUpload({ onAnalyze, onReset, isLoaded }) {
               </span>
             </div>
           </div>
-          {isLoaded && (
-            <button
-              onClick={handleReset}
-              className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              <FiRefreshCw size={14} />
-              Reset Demo
-            </button>
-          )}
+          <button
+            onClick={resetDemo}
+            className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+          >
+            <FiRefreshCw size={14} />
+            Reset Demo
+          </button>
         </nav>
 
         <div className="py-5">
@@ -83,22 +70,29 @@ export default function NavbarAndUpload({ onAnalyze, onReset, isLoaded }) {
               </div>
               <button
                 onClick={handleAnalyze}
-                disabled={loading}
+                disabled={isLoading}
                 className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
               >
-                {loading && <FiLoader size={14} className="animate-spin" />}
-                {loading ? "Analyzing…" : "Analyze Reviews"}
+                {isLoading && <FiLoader size={14} className="animate-spin" />}
+                {isLoading ? "Analyzing…" : "Analyze Reviews"}
               </button>
             </div>
           )}
 
-          {done && (
+          {error && (
+            <div className="mt-3 flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm text-rose-700">
+              <FiAlertCircle size={15} className="shrink-0" />
+              {error}
+            </div>
+          )}
+
+          {stats && (
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { label: "Total Rows Processed", value: "30" },
-                { label: "Empty / Duplicates Skipped", value: "2 empty · 1 duplicate" },
-                { label: "AI Calls · Cache Hits", value: "9 calls · 3 hits" },
-                { label: "Processing Time", value: "1.2s" },
+                { label: "Total Rows Processed", value: String(stats.totalRows) },
+                { label: "Empty / Duplicates Skipped", value: `${stats.skippedEmpty} empty · ${stats.skippedDuplicates} dup` },
+                { label: "AI Calls · Cache Hits", value: `${stats.aiBatchesCalled} calls · ${stats.cacheHits} hits` },
+                { label: "Processing Time", value: stats.processingTime },
               ].map((s) => (
                 <div key={s.label} className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex flex-col gap-0.5">
                   <span className="text-xs text-emerald-600 font-medium">{s.label}</span>

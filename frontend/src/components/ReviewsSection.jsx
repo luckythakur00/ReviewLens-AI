@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { FiSearch, FiDownload, FiStar, FiCopy, FiCheck, FiZap } from "react-icons/fi";
-import { ALLOWED_TOPICS, PRODUCTS, SUGGESTED_REPLIES } from "../data/mockReviews";
+import { FiSearch, FiDownload, FiStar, FiCopy, FiCheck, FiZap, FiLoader } from "react-icons/fi";
+import { ALLOWED_TOPICS, PRODUCTS } from "../data/mockReviews";
+import useReviewStore from "../store/useReviewStore";
 
 const SENTIMENT_STYLES = {
   positive: "bg-emerald-100 text-emerald-700",
@@ -16,27 +17,21 @@ function StarRating({ rating }) {
   return (
     <span className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
-        <FiStar
-          key={s}
-          size={12}
-          className={s <= rating ? "text-amber-400 fill-amber-400" : "text-slate-300"}
-        />
+        <FiStar key={s} size={12} className={s <= rating ? "text-amber-400 fill-amber-400" : "text-slate-300"} />
       ))}
     </span>
   );
 }
 
 function ReviewCard({ review }) {
-  const [reply, setReply] = useState(null);
   const [copied, setCopied] = useState(false);
+  const { generateSuggestedReply, replyLoadingId } = useReviewStore();
 
-  function handleGenerate() {
-    const generated = SUGGESTED_REPLIES[review.review_id] || "Thank you for your feedback. Our team will get back to you shortly.";
-    setReply(generated);
-  }
+  const reviewId = review._id || review.review_id;
+  const isGenerating = replyLoadingId === reviewId;
 
   function handleCopy() {
-    navigator.clipboard.writeText(reply);
+    navigator.clipboard.writeText(review.suggested_reply);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -78,20 +73,21 @@ function ReviewCard({ review }) {
         ))}
       </div>
 
-      {review.needs_reply && !reply && (
+      {review.needs_reply && !review.suggested_reply && (
         <button
-          onClick={handleGenerate}
-          className="self-start flex items-center gap-2 text-sm font-semibold text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-lg transition-colors"
+          onClick={() => generateSuggestedReply(reviewId)}
+          disabled={isGenerating}
+          className="self-start flex items-center gap-2 text-sm font-semibold text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 disabled:opacity-60 px-4 py-2 rounded-lg transition-colors"
         >
-          <FiZap size={14} />
-          Generate Suggested Reply
+          {isGenerating ? <FiLoader size={14} className="animate-spin" /> : <FiZap size={14} />}
+          {isGenerating ? "Generating…" : "Generate Suggested Reply"}
         </button>
       )}
 
-      {reply && (
+      {review.suggested_reply && (
         <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 flex flex-col gap-2">
           <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wide">AI Suggested Reply</p>
-          <p className="text-sm text-slate-700 leading-relaxed">{reply}</p>
+          <p className="text-sm text-slate-700 leading-relaxed">{review.suggested_reply}</p>
           <button
             onClick={handleCopy}
             className="self-end flex items-center gap-1.5 text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
@@ -105,13 +101,14 @@ function ReviewCard({ review }) {
   );
 }
 
-export default function ReviewsSection({ reviews, activeTopic, onTopicClick }) {
+export default function ReviewsSection({ activeTopic, onTopicClick }) {
+  const reviews = useReviewStore((s) => s.reviews);
+
   const [product, setProduct] = useState("All Products");
   const [sentiment, setSentiment] = useState("All");
   const [search, setSearch] = useState("");
 
   const topic = activeTopic || "All Topics";
-
   const sentiments = ["All", "Positive", "Neutral", "Negative"];
 
   function countSentiment(s) {
@@ -220,7 +217,7 @@ export default function ReviewsSection({ reviews, activeTopic, onTopicClick }) {
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          {filtered.map((r) => <ReviewCard key={r.review_id} review={r} />)}
+          {filtered.map((r) => <ReviewCard key={r._id || r.review_id} review={r} />)}
         </div>
       )}
     </div>

@@ -3,10 +3,13 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
 } from "recharts";
 import { ALLOWED_TOPICS } from "../data/mockReviews";
+import useReviewStore from "../store/useReviewStore";
 
 const SENTIMENT_COLORS = { positive: "#10b981", neutral: "#f59e0b", negative: "#f43f5e" };
 
-export default function ChartsSection({ reviews, onTopicClick }) {
+export default function ChartsSection({ onTopicClick }) {
+  const reviews = useReviewStore((s) => s.reviews);
+
   const sentimentData = ["positive", "neutral", "negative"].map((s) => ({
     name: s.charAt(0).toUpperCase() + s.slice(1),
     value: reviews.filter((r) => r.sentiment === s).length,
@@ -57,22 +60,9 @@ export default function ChartsSection({ reviews, onTopicClick }) {
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
             <XAxis type="number" tick={{ fontSize: 12, fill: "#94a3b8" }} tickLine={false} axisLine={false} allowDecimals={false} />
-            <YAxis
-              type="category"
-              dataKey="name"
-              tick={{ fontSize: 12, fill: "#475569" }}
-              tickLine={false}
-              axisLine={false}
-              width={80}
-            />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: "#475569" }} tickLine={false} axisLine={false} width={80} />
             <Tooltip formatter={(v) => [`${v} mentions`, "Count"]} />
-            <Bar
-              dataKey="count"
-              fill="#6366f1"
-              radius={[0, 4, 4, 0]}
-              cursor="pointer"
-              onClick={(data) => onTopicClick(data.rawTopic)}
-            />
+            <Bar dataKey="count" fill="#6366f1" radius={[0, 4, 4, 0]} cursor="pointer" onClick={(d) => onTopicClick(d.rawTopic)} />
           </BarChart>
         </ResponsiveContainer>
       </div>
