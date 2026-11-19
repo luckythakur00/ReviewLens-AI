@@ -3,7 +3,7 @@ import { mockReviews } from "../data/mockReviews";
 import api from "../api/axios";
 
 const useReviewStore = create((set, get) => ({
-  reviews: mockReviews,
+  reviews: [],
   stats: null,
   isLoading: false,
   error: null,
@@ -45,8 +45,24 @@ const useReviewStore = create((set, get) => ({
     }
   },
 
-  resetDemo: () => {
-    set({ reviews: mockReviews, stats: null, error: null });
+  loadDemoData: () => {
+    set({
+      reviews: mockReviews,
+      error: null,
+      stats: {
+        totalRows: 12,
+        validCount: 12,
+        skippedEmpty: 0,
+        skippedDuplicates: 0,
+        cacheHits: 0,
+        aiBatchesCalled: 0,
+        processingTime: "0.00s (Demo)",
+      },
+    });
+  },
+
+  clearData: () => {
+    set({ reviews: [], stats: null, error: null });
   },
 }));
 

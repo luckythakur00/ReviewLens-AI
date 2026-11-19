@@ -1,12 +1,10 @@
 import { useState, useRef } from "react";
 import { FiBarChart2, FiUploadCloud, FiFile, FiLoader, FiRefreshCw, FiAlertCircle } from "react-icons/fi";
-import useReviewStore from "../store/useReviewStore";
-
-export default function NavbarAndUpload() {
+import useReviewStore from "../store/useReviewStore";export default function NavbarAndUpload() {
   const [file, setFile] = useState(null);
   const inputRef = useRef(null);
 
-  const { uploadReviewsCsv, resetDemo, isLoading, stats, error } = useReviewStore();
+  const { uploadReviewsCsv, loadDemoData, clearData, reviews, isLoading, stats, error } = useReviewStore();
 
   function handleFile(e) {
     setFile(e.target.files[0]);
@@ -35,13 +33,22 @@ export default function NavbarAndUpload() {
               </span>
             </div>
           </div>
-          <button
-            onClick={resetDemo}
-            className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-          >
-            <FiRefreshCw size={14} />
-            Reset Demo
-          </button>
+          {reviews.length === 0 ? (
+            <button
+              onClick={loadDemoData}
+              className="text-sm font-semibold px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+            >
+              Load Demo Data
+            </button>
+          ) : (
+            <button
+              onClick={clearData}
+              className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+            >
+              <FiRefreshCw size={14} />
+              Clear Dashboard
+            </button>
+          )}
         </nav>
 
         <div className="py-5">
