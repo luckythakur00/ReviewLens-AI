@@ -16,13 +16,13 @@ const useReviewStore = create((set, get) => ({
       formData.append("file", file);
       const response = await api.post("/reviews/upload", formData);
       set({
-        reviews: response.data.reviews,
-        stats: response.data.stats,
+        reviews: response.data.reviews || [],
+        stats: response.data.stats || null,
         isLoading: false,
       });
     } catch (err) {
       set({
-        error: err.response?.data?.message || "Upload failed. Please try again.",
+        error: err.response?.data?.message || err.message || "Failed to upload reviews.",
         isLoading: false,
       });
     }
@@ -41,7 +41,10 @@ const useReviewStore = create((set, get) => ({
       });
       set({ reviews: updatedReviews, replyLoadingId: null });
     } catch (err) {
-      set({ replyLoadingId: null });
+      set({
+        error: err.response?.data?.message || err.message,
+        replyLoadingId: null,
+      });
     }
   },
 

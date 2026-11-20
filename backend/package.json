@@ -8,15 +8,15 @@
     "test": "tests"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "vitest"
+    "start": "node --env-file=.env src/server.js",
+    "dev": "node --watch --env-file=.env src/server.js",
+    "test": "node --env-file=.env --test tests/reviewLens.test.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/genai": "^3.6.0",
+    "@google/genai": "^3.6.1",
     "cors": "^2.8.6",
     "csv-parse": "^7.0.3",
     "dotenv": "^18.0.10",

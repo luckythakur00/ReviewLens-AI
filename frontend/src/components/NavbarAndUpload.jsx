@@ -1,13 +1,17 @@
 import { useState, useRef } from "react";
 import { FiBarChart2, FiUploadCloud, FiFile, FiLoader, FiRefreshCw, FiAlertCircle } from "react-icons/fi";
-import useReviewStore from "../store/useReviewStore";export default function NavbarAndUpload() {
+import useReviewStore from "../store/useReviewStore";
+
+export default function NavbarAndUpload() {
   const [file, setFile] = useState(null);
   const inputRef = useRef(null);
 
   const { uploadReviewsCsv, loadDemoData, clearData, reviews, isLoading, stats, error } = useReviewStore();
 
   function handleFile(e) {
-    setFile(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
   }
 
   function formatBytes(b) {
@@ -15,7 +19,17 @@ import useReviewStore from "../store/useReviewStore";export default function Nav
   }
 
   function handleAnalyze() {
-    if (file) uploadReviewsCsv(file);
+    if (file) {
+      uploadReviewsCsv(file);
+    }
+  }
+
+  function handleReset() {
+    setFile(null);
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+    clearData();
   }
 
   return (
@@ -42,7 +56,7 @@ import useReviewStore from "../store/useReviewStore";export default function Nav
             </button>
           ) : (
             <button
-              onClick={clearData}
+              onClick={handleReset}
               className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
             >
               <FiRefreshCw size={14} />
@@ -89,17 +103,17 @@ import useReviewStore from "../store/useReviewStore";export default function Nav
           {error && (
             <div className="mt-3 flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-lg px-4 py-3 text-sm text-rose-700">
               <FiAlertCircle size={15} className="shrink-0" />
-              {error}
+              <span>{error}</span>
             </div>
           )}
 
           {stats && (
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
-                { label: "Total Rows Processed", value: String(stats.totalRows) },
-                { label: "Empty / Duplicates Skipped", value: `${stats.skippedEmpty} empty · ${stats.skippedDuplicates} dup` },
-                { label: "AI Calls · Cache Hits", value: `${stats.aiBatchesCalled} calls · ${stats.cacheHits} hits` },
-                { label: "Processing Time", value: stats.processingTime },
+                { label: "Total Rows Processed", value: String(stats.totalRows ?? stats.validRows ?? 0) },
+                { label: "Empty / Duplicates Skipped", value: `${stats.skippedEmpty ?? 0} empty · ${stats.skippedDuplicates ?? stats.duplicatesRemoved ?? 0} dup` },
+                { label: "AI Calls · Cache Hits", value: `${stats.aiBatchesCalled ?? 0} calls · ${stats.cacheHits ?? 0} hits` },
+                { label: "Processing Time", value: stats.processingTime || "0.00s" },
               ].map((s) => (
                 <div key={s.label} className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 flex flex-col gap-0.5">
                   <span className="text-xs text-emerald-600 font-medium">{s.label}</span>
