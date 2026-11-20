@@ -21,8 +21,7 @@ function validateReviewAnalysis(item) {
   };
 }
 
-async function callWithBackoff(fn) {
-  const delays = [1000, 2000, 4000];
+async function callWithBackoff(fn, delays = [1000, 2000, 4000]) {
   for (let i = 0; i <= delays.length; i++) {
     try {
       return await fn();
@@ -122,4 +121,4 @@ Sentiment: ${review.sentiment}`;
   return result.text.trim();
 }
 
-export { validateReviewAnalysis, analyzeReviewsBatch, generateSingleReply };
+export { validateReviewAnalysis, analyzeReviewsBatch, generateSingleReply, callWithBackoff };
