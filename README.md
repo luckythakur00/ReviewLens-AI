@@ -2,6 +2,14 @@
 
 A full-stack AI-powered review analysis platform built with React + Vite (frontend) and Node.js + Express (backend), leveraging Google Gemini (`@google/genai`) to transform raw product reviews into actionable insights for store owners.
 
+
+## Live Links & Repository
+
+- **Live Web App:** https://reviewlens-ai-project.netlify.app/
+- **Live Backend API:** https://reviewlens-api-fs6k.onrender.com
+- **GitHub Repository:** https://github.com/luckythakur00/ReviewLens-AI
+
+
 ---
 
 ## Project Structure
