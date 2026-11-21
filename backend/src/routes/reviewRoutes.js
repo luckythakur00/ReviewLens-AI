@@ -31,7 +31,7 @@ router.post("/upload", upload.single("file"), async (req, res) => {
 
     const startTime = Date.now();
     const csvString = req.file.buffer.toString("utf-8");
-    const { cleanedReviews, stats } = cleanReviewsCsv(csvString);
+    const { cleanedReviews, stats } = await cleanReviewsCsv(csvString);
 
     if (cleanedReviews.length === 0) {
       return res.status(422).json({ message: "No valid reviews found in CSV." });
@@ -121,7 +121,8 @@ router.post("/upload", upload.single("file"), async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: err.message || "Failed to process reviews." });
+    const status = err.statusCode || (err.message?.includes("review text") ? 400 : 500);
+    res.status(status).json({ message: err.message || "Failed to process reviews." });
   }
 });
 

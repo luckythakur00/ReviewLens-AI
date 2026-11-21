@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { cleanReviewsCsv } from "../src/utils/csvCleaner.js";
-import { validateReviewAnalysis, callWithBackoff } from "../src/services/geminiService.js";
+import { cleanReviewsCsv, detectHeaderMapping } from "../src/utils/csvCleaner.js";
+import { validateReviewAnalysis, callWithBackoff, inferCsvSchemaWithGemini } from "../src/services/geminiService.js";
 
 describe("Suite A — CSV Cleaning & Sanitization", () => {
   const csv = `review_id,product,rating,date,review_text
@@ -244,5 +244,96 @@ describe("Suite C — Exponential Backoff Retry Logic", () => {
     );
 
     assert.equal(callCount, 4, "Initial call + 3 retry attempts = 4 total calls");
+  });
+});
+
+describe("Suite D — Flexible CSV Header Aliases & Safe Fallbacks", () => {
+  test("maps common header aliases (ID, Product_Name, Stars, Comment) accurately", () => {
+    const aliasCsv = `ID,Product_Name,Stars,Comment
+A101,Smart Watch V2,5,"Excellent build quality, battery lasts 4 days."
+A102,Smart Watch V2,2,"Strap broke after a week."`;
+
+    const { cleanedReviews, stats } = cleanReviewsCsv(aliasCsv);
+
+    assert.equal(stats.totalRows, 2);
+    assert.equal(cleanedReviews.length, 2);
+
+    const first = cleanedReviews[0];
+    assert.equal(first.review_id, "A101");
+    assert.equal(first.product, "Smart Watch V2");
+    assert.equal(first.rating, 5);
+    assert.equal(first.review_text, "Excellent build quality, battery lasts 4 days.");
+    assert.ok(typeof first.textHash === "string" && first.textHash.length === 64);
+  });
+
+  test("provides safe fallbacks for missing metadata columns (ROW-n, General Product, empty date, unknown rating)", () => {
+    const minimalCsv = `Comment
+"First review with no other metadata provided."
+"Second review with great feedback."`;
+
+    const { cleanedReviews } = cleanReviewsCsv(minimalCsv);
+
+    assert.equal(cleanedReviews.length, 2);
+
+    assert.equal(cleanedReviews[0].review_id, "ROW-1");
+    assert.equal(cleanedReviews[0].product, "General Product");
+    assert.equal(cleanedReviews[0].date, "");
+    assert.equal(cleanedReviews[0].rating, "unknown");
+    assert.equal(cleanedReviews[0].review_text, "First review with no other metadata provided.");
+
+    assert.equal(cleanedReviews[1].review_id, "ROW-2");
+    assert.equal(cleanedReviews[1].product, "General Product");
+  });
+
+  test("throws HTTP 400 error when review text column is completely missing and cannot be inferred", async () => {
+    const noTextCsv = `Product_Name,Stars,Item_Cost
+Smart Watch,5,$99
+Running Shoes,4,$120`;
+
+    await assert.rejects(
+      async () => {
+        await cleanReviewsCsv(noTextCsv);
+      },
+      (err) => {
+        assert.equal(err.statusCode, 400);
+        assert.ok(err.message.includes("review text"), "error message must state review text column was not found");
+        return true;
+      }
+    );
+  });
+
+  test("accepts and applies custom/inferred header mapping cleanly", () => {
+    const unknownHeadersCsv = `col_a,col_b,col_c
+REV-01,Espresso Machine,"Makes rich crema, easy to clean."`;
+
+    const customMapping = {
+      review_id: "col_a",
+      product: "col_b",
+      review_text: "col_c",
+    };
+
+    const { cleanedReviews } = cleanReviewsCsv(unknownHeadersCsv, customMapping);
+
+    assert.equal(cleanedReviews.length, 1);
+    assert.equal(cleanedReviews[0].review_id, "REV-01");
+    assert.equal(cleanedReviews[0].product, "Espresso Machine");
+    assert.equal(cleanedReviews[0].review_text, "Makes rich crema, easy to clean.");
+    assert.equal(cleanedReviews[0].rating, "unknown");
+  });
+
+  test("detectHeaderMapping matches diverse aliases and normalizes whitespace/casing", () => {
+    const headers = ["  Review Text  ", "ITEM_NAME", "Score", "ReviewID", "created_at"];
+    const mapping = detectHeaderMapping(headers);
+
+    assert.equal(mapping.review_text, "  Review Text  ");
+    assert.equal(mapping.product, "ITEM_NAME");
+    assert.equal(mapping.rating, "Score");
+    assert.equal(mapping.review_id, "ReviewID");
+    assert.equal(mapping.date, "created_at");
+  });
+
+  test("inferCsvSchemaWithGemini safely returns null on empty or non-array headers without throwing", async () => {
+    assert.equal(await inferCsvSchemaWithGemini([]), null);
+    assert.equal(await inferCsvSchemaWithGemini(null), null);
   });
 });

@@ -121,4 +121,66 @@ Sentiment: ${review.sentiment}`;
   return result.text.trim();
 }
 
-export { validateReviewAnalysis, analyzeReviewsBatch, generateSingleReply, callWithBackoff };
+async function inferCsvSchemaWithGemini(headers, sampleRows = []) {
+  if (!Array.isArray(headers) || headers.length === 0) return null;
+
+  const prompt = `Given the following CSV column headers and the first 3 sample rows from an uploaded customer reviews CSV:
+
+Headers:
+${JSON.stringify(headers)}
+
+First 3 sample rows:
+${JSON.stringify(sampleRows.slice(0, 3), null, 2)}
+
+Match each canonical field to the exact column name from the Headers list above:
+- review_text: the column containing the user's review, comment, feedback, or opinion text (REQUIRED)
+- product: the column containing the product, item name, or title (optional, null if absent)
+- rating: the column containing the review score, stars, or numerical rating (optional, null if absent)
+- review_id: the column containing the unique review ID or row identifier (optional, null if absent)
+- date: the column containing the review date or timestamp (optional, null if absent)
+
+Return ONLY a JSON object with this exact shape:
+{
+  "review_text": "<exact header name or null>",
+  "product": "<exact header name or null>",
+  "rating": "<exact header name or null>",
+  "review_id": "<exact header name or null>",
+  "date": "<exact header name or null>"
+}`;
+
+  try {
+    const result = await callWithBackoff(() =>
+      ai.models.generateContent({
+        model: "gemini-3.5-flash-lite",
+        contents: prompt,
+        config: {
+          systemInstruction:
+            "You are a strict data schema parser. Map the provided CSV headers and sample data to canonical review fields. Output valid JSON only.",
+          responseMimeType: "application/json",
+        },
+      })
+    );
+
+    const parsed = JSON.parse(result.text);
+    if (!parsed || typeof parsed !== "object") return null;
+
+    const mapping = {};
+    for (const field of ["review_text", "product", "rating", "review_id", "date"]) {
+      const val = parsed[field];
+      if (typeof val === "string") {
+        const matched = headers.find(
+          (h) => h === val || h.trim().toLowerCase() === val.trim().toLowerCase()
+        );
+        if (matched) {
+          mapping[field] = matched;
+        }
+      }
+    }
+
+    return mapping.review_text ? mapping : null;
+  } catch {
+    return null;
+  }
+}
+
+export { validateReviewAnalysis, analyzeReviewsBatch, generateSingleReply, callWithBackoff, inferCsvSchemaWithGemini };
